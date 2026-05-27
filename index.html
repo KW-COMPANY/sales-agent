@@ -1,26 +1,48 @@
+<!-- File: index.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SalesPilot AI - 営業支援エージェント</title>
+  <title>SalesPilot - 営業支援エージェント（匿名化運用版）</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="app-header">
-    <h1>🤝 SalesPilot AI</h1>
-    <p class="subtitle">営業職向け 日次・月次タスク＆スケジュール提案</p>
+    <h1>🤝 SalesPilot</h1>
+    <p class="subtitle">営業職向け タスク＆スケジュール提案（個人情報・企業情報フリー運用）</p>
   </header>
 
   <main class="container">
+
+    <!-- 利用ルール明示 -->
+    <section class="card notice">
+      <h2>🛡 入力ルール（必ずお読みください）</h2>
+      <ul>
+        <li>氏名・会社名・メール・電話番号・住所などの<strong>個人情報・企業情報は入力しないでください</strong></li>
+        <li>代わりに「<code>A社</code>」「<code>担当者X</code>」「<code>案件α</code>」など<strong>記号化</strong>してください</li>
+        <li>検知された場合は<strong>自動マスキング</strong>され、AIにも保存先にも生データは渡りません</li>
+      </ul>
+    </section>
+
     <!-- 入力エリア -->
     <section class="card">
       <h2>📝 今日やるべきこと・状況を入力</h2>
       <textarea
         id="userInput"
         rows="6"
-        placeholder="例：明日A社へ提案訪問、来週見積3件作成、月末請求書発行、未読メール20件、金曜にチーム定例MTGあり"
+        placeholder="例：A社へ提案訪問、見積3件作成、月末請求書発行、未読メール20件、金曜にチーム定例MTG"
       ></textarea>
+
+      <!-- 個人情報検知アラート -->
+      <div id="piiAlert" class="pii-alert" style="display:none"></div>
+
+      <!-- マスキング後プレビュー -->
+      <div id="maskedPreview" class="masked-preview" style="display:none">
+        <strong>🔒 マスキング後の送信内容プレビュー：</strong>
+        <pre id="maskedText"></pre>
+      </div>
+
       <div class="controls">
         <label>
           モード：
@@ -30,6 +52,10 @@
             <option value="taskbreak">タスク分解のみ</option>
             <option value="mailtemplate">営業メール文案</option>
           </select>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="strictMode" checked />
+          厳格モード（検知時は送信ブロック）
         </label>
         <button id="runBtn">エージェント実行</button>
       </div>
@@ -49,11 +75,16 @@
 
     <!-- 保存タスク一覧 -->
     <section class="card">
-      <h2>🗂 保存済みタスク（KV連携）</h2>
+      <h2>🗂 保存済みタスク（匿名化サマリのみ・7日でTTL削除）</h2>
       <button id="loadBtn">一覧を読み込む</button>
+      <button id="clearBtn" class="danger">全削除</button>
       <ul id="taskList" class="task-list"></ul>
     </section>
   </main>
+
+  <footer class="app-footer">
+    <small>個人情報・企業情報はクライアント／サーバー両側で検知・マスキングされます</small>
+  </footer>
 
   <script src="app.js"></script>
 </body>
