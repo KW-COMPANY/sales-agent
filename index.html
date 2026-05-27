@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sales AI Agent - 営業支援エージェント</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>🤝 Sales AI Agent</h1>
+    <p class="subtitle">営業職向け 日次・月次タスク＆スケジュール提案</p>
+  </header>
+
+  <main class="container">
+    <!-- 入力エリア -->
+    <section class="card">
+      <h2>📝 今日やるべきこと・状況を入力</h2>
+      <textarea
+        id="userInput"
+        rows="6"
+        placeholder="例：明日A社へ提案訪問、来週見積3件作成、月末請求書発行、未読メール20件、金曜にチーム定例MTGあり"
+      ></textarea>
+      <div class="controls">
+        <label>
+          モード：
+          <select id="mode">
+            <option value="daily">日次プラン</option>
+            <option value="monthly">月次プラン</option>
+            <option value="taskbreak">タスク分解のみ</option>
+            <option value="mailtemplate">営業メール文案</option>
+          </select>
+        </label>
+        <button id="runBtn">エージェント実行</button>
+      </div>
+    </section>
+
+    <!-- 処理ステップ可視化 -->
+    <section class="card">
+      <h2>⚙️ 多段処理ステップ</h2>
+      <ol id="steps" class="steps"></ol>
+    </section>
+
+    <!-- 結果表示 -->
+    <section class="card">
+      <h2>📅 エージェントからの提案</h2>
+      <div id="output" class="output">ここに結果が表示されます。</div>
+    </section>
+
+    <!-- 保存タスク一覧 -->
+    <section class="card">
+      <h2>🗂 保存済みタスク（KV連携）</h2>
+      <button id="loadBtn">一覧を読み込む</button>
+      <ul id="taskList" class="task-list"></ul>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <small>Powered by GitHub Pages × Cloudflare Workers × Workers AI × Gemini</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
