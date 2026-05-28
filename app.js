@@ -303,10 +303,17 @@ async function runAgent() {
         "\n\n" + output;
     }
     $("output").textContent = output;
+
   } catch (e) {
-    $("output").textContent = "エラー：" + e.message;
+    let msg = e.message || String(e);
+    // Workers側からのJSON形式エラーメッセージを展開
+    try {
+      const parsed = JSON.parse(msg);
+      if (parsed.error) msg = parsed.error;
+      if (parsed.detail) msg += "\n詳細：" + parsed.detail;
+    } catch (_) {}
+    $("output").textContent = "⚠️ エラー：" + msg;
   }
-}
 
 // =====================================================
 // 保存タスク一覧
