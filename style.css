@@ -48,6 +48,170 @@ body {
   padding-left: 10px;
 }
 
+/* =====================================================
+   タスク選択グリッド
+===================================================== */
+.ui-hint {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0 0 14px;
+}
+
+.task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.task-card {
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 8px 8px;
+  cursor: pointer;
+  background: #f9fafb;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  user-select: none;
+}
+
+.task-card:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.task-card.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.task-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.task-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.task-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  color: #374151;
+}
+
+/* カウンター */
+.task-counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.task-counter.hidden {
+  display: none;
+}
+
+.counter-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.counter-btn:hover {
+  background: #1e40af;
+}
+
+.counter-val {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1e40af;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* =====================================================
+   緊急度
+===================================================== */
+.urgency-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.urgency-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.urgency-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.urgency-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 2px solid #e5e7eb;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.urgency-btn:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.urgency-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+/* =====================================================
+   任意補足メモ
+===================================================== */
+.optional-row {
+  margin-bottom: 14px;
+}
+
+.toggle-optional {
+  background: none;
+  color: #2563eb;
+  border: 1px dashed #93c5fd;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.toggle-optional:hover {
+  background: #eff6ff;
+}
+
 textarea {
   width: 100%;
   padding: 10px;
@@ -57,6 +221,36 @@ textarea {
   resize: vertical;
 }
 
+/* =====================================================
+   送信プレビュー
+===================================================== */
+.send-preview {
+  background: #f0fdf4;
+  border-left: 4px solid #059669;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.send-preview-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #059669;
+  margin-bottom: 4px;
+}
+
+.send-preview-body {
+  font-size: 0.85rem;
+  color: #1f2937;
+  white-space: pre-wrap;
+  margin: 0;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+/* =====================================================
+   コントロール行
+===================================================== */
 .controls {
   display: flex;
   justify-content: space-between;
@@ -86,6 +280,34 @@ button:hover {
   background: #1e40af;
 }
 
+.run-btn {
+  background: #9ca3af;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 12px 24px;
+  transition: background 0.2s;
+}
+
+.run-btn:hover {
+  background: #9ca3af;
+}
+
+.run-btn.run-btn-active {
+  background: #2563eb;
+}
+
+.run-btn.run-btn-active:hover {
+  background: #1e40af;
+}
+
+.run-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* =====================================================
+   ステップ・出力・タスクリスト
+===================================================== */
 .steps {
   padding-left: 20px;
 }
@@ -131,6 +353,9 @@ button:hover {
   color: #6b7280;
 }
 
+/* =====================================================
+   お知らせ・PII
+===================================================== */
 .notice {
   background: #fef3c7;
   border-left: 4px solid #f59e0b;
