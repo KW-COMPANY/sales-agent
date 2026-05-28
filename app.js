@@ -11,46 +11,46 @@ const STEP_LABELS = [
   "⑥出力もPIIスキャンしてから返却",
 ];
 
-// =====================================================
-// ★ タスク定義（BtoB法人営業向けルーティン）
-// =====================================================
 const TASK_DEFS = [
-  { id: "visit",    icon: "🏢", label: "訪問・商談",   unit: "件", default: 1 },
-  { id: "estimate", icon: "📄", label: "見積作成",     unit: "件", default: 1 },
-  { id: "invoice",  icon: "🧾", label: "請求書発行",   unit: "件", default: 1 },
-  { id: "followup", icon: "📞", label: "フォロー連絡", unit: "件", default: 2 },
-  { id: "mail",     icon: "✉️", label: "メール対応",   unit: "件", default: 5 },
-  { id: "proposal", icon: "📊", label: "提案資料作成", unit: "件", default: 1 },
-  { id: "mtg",      icon: "👥", label: "社内MTG",      unit: "回", default: 1 },
-  { id: "report",   icon: "📝", label: "日報・報告書", unit: "件", default: 1 },
+  { id: "visit",    icon: "🏢", label: "訪問・商談",       unit: "件", default: 1 },
+  { id: "estimate", icon: "📄", label: "見積作成",         unit: "件", default: 1 },
+  { id: "invoice",  icon: "🧾", label: "請求書発行",       unit: "件", default: 1 },
+  { id: "followup", icon: "📞", label: "フォロー連絡",     unit: "件", default: 2 },
+  { id: "mail",     icon: "✉️", label: "メール対応",       unit: "件", default: 5 },
+  { id: "proposal", icon: "📊", label: "提案資料作成",     unit: "件", default: 1 },
+  { id: "mtg",      icon: "👥", label: "社内MTG",          unit: "回", default: 1 },
+  { id: "report",   icon: "📝", label: "日報・報告書",     unit: "件", default: 1 },
   { id: "pipeline", icon: "🔄", label: "パイプライン整理", unit: "回", default: 1 },
-  { id: "contract", icon: "🖊️", label: "契約手続き",  unit: "件", default: 1 },
-  { id: "newlead",  icon: "🔍", label: "新規リード",   unit: "件", default: 3 },
-  { id: "approval", icon: "✅", label: "社内承認依頼", unit: "件", default: 1 },
+  { id: "contract", icon: "🖊️", label: "契約手続き",      unit: "件", default: 1 },
+  { id: "newlead",  icon: "🔍", label: "新規リード",       unit: "件", default: 3 },
+  { id: "approval", icon: "✅", label: "社内承認依頼",     unit: "件", default: 1 },
 ];
 
-const URGENCY_LABELS = { low: "低（通常運用）", mid: "中（一部急ぎあり）", high: "高（今日中に要完了）" };
+const URGENCY_LABELS = {
+  low:  "低（通常運用）",
+  mid:  "中（一部急ぎあり）",
+  high: "高（今日中に要完了）",
+};
 
-// 選択状態管理
-let selectedTasks = {}; // { taskId: count }
+let selectedTasks = {};
 let urgencyLevel = "low";
 
 // =====================================================
-// PII検知パターン（クライアント側・第一防衛線）
+// PII検知パターン
 // =====================================================
 const PII_PATTERNS = [
-  { name: "メールアドレス", regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, mask: "[EMAIL]" },
-  { name: "電話番号", regex: /(?:\+?81[-\s]?|0)\d{1,4}[-\s]?\d{1,4}[-\s]?\d{3,4}/g, mask: "[PHONE]" },
-  { name: "郵便番号", regex: /〒?\s?\d{3}-\d{4}/g, mask: "[POSTAL]" },
-  { name: "URL", regex: /https?:\/\/[^\s　]+/g, mask: "[URL]" },
-  { name: "クレジットカード番号", regex: /\b(?:\d[ -]*?){13,16}\b/g, mask: "[CARD]" },
-  { name: "マイナンバー風", regex: /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, mask: "[ID]" },
-  { name: "企業名", regex: /(?:株式会社|（株）|\(株\))\s?[一-龯ァ-ヶーA-Za-z0-9]+/g, mask: "[COMPANY]" },
-  { name: "企業名(後置)", regex: /[一-龯ァ-ヶーA-Za-z0-9]+(?:株式会社|（株）|\(株\)|有限会社|合同会社)/g, mask: "[COMPANY]" },
-  { name: "英文社名", regex: /\b[A-Z][A-Za-z0-9&]+\s+(?:Inc|Ltd|Corp|Co|LLC|GmbH)\.?\b/g, mask: "[COMPANY]" },
-  { name: "住所", regex: /(?:北海道|青森県|岩手県|宮城県|秋田県|山形県|福島県|茨城県|栃木県|群馬県|埼玉県|千葉県|東京都|神奈川県|新潟県|富山県|石川県|福井県|山梨県|長野県|岐阜県|静岡県|愛知県|三重県|滋賀県|京都府|大阪府|兵庫県|奈良県|和歌山県|鳥取県|島根県|岡山県|広島県|山口県|徳島県|香川県|愛媛県|高知県|福岡県|佐賀県|長崎県|熊本県|大分県|宮崎県|鹿児島県|沖縄県)[^\s　、。]+/g, mask: "[ADDRESS]" },
-  { name: "カタカナ氏名", regex: /[ァ-ヶー]{2,}[\s　][ァ-ヶー]{2,}/g, mask: "[NAME]" },
-  { name: "氏名敬称", regex: /[一-龯]{2,4}\s?(?:様|さん|氏|殿|君|ちゃん)/g, mask: "[NAME]" },
+  { name: "メールアドレス",       regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,          mask: "[EMAIL]" },
+  { name: "電話番号",             regex: /(?:\+?81[-\s]?|0)\d{1,4}[-\s]?\d{1,4}[-\s]?\d{3,4}/g,      mask: "[PHONE]" },
+  { name: "郵便番号",             regex: /〒?\s?\d{3}-\d{4}/g,                                          mask: "[POSTAL]" },
+  { name: "URL",                  regex: /https?:\/\/[^\s　]+/g,                                        mask: "[URL]" },
+  { name: "クレジットカード番号", regex: /\b(?:\d[ -]*?){13,16}\b/g,                                   mask: "[CARD]" },
+  { name: "マイナンバー風",       regex: /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g,                          mask: "[ID]" },
+  { name: "企業名",               regex: /(?:株式会社|（株）|\(株\))\s?[一-龯ァ-ヶーA-Za-z0-9]+/g,    mask: "[COMPANY]" },
+  { name: "企業名(後置)",         regex: /[一-龯ァ-ヶーA-Za-z0-9]+(?:株式会社|（株）|\(株\)|有限会社|合同会社)/g, mask: "[COMPANY]" },
+  { name: "英文社名",             regex: /\b[A-Z][A-Za-z0-9&]+\s+(?:Inc|Ltd|Corp|Co|LLC|GmbH)\.?\b/g, mask: "[COMPANY]" },
+  { name: "住所",                 regex: /(?:北海道|青森県|岩手県|宮城県|秋田県|山形県|福島県|茨城県|栃木県|群馬県|埼玉県|千葉県|東京都|神奈川県|新潟県|富山県|石川県|福井県|山梨県|長野県|岐阜県|静岡県|愛知県|三重県|滋賀県|京都府|大阪府|兵庫県|奈良県|和歌山県|鳥取県|島根県|岡山県|広島県|山口県|徳島県|香川県|愛媛県|高知県|福岡県|佐賀県|長崎県|熊本県|大分県|宮崎県|鹿児島県|沖縄県)[^\s　、。]+/g, mask: "[ADDRESS]" },
+  { name: "カタカナ氏名",         regex: /[ァ-ヶー]{2,}[\s　][ァ-ヶー]{2,}/g,                           mask: "[NAME]" },
+  { name: "氏名敬称",             regex: /[一-龯]{2,4}\s?(?:様|さん|氏|殿|君|ちゃん)/g,                mask: "[NAME]" },
 ];
 
 function detectAndMask(text) {
@@ -67,7 +67,7 @@ function detectAndMask(text) {
 }
 
 // =====================================================
-// ★ タスクグリッド描画
+// タスクグリッド描画
 // =====================================================
 function renderTaskGrid() {
   const grid = $("taskGrid");
@@ -93,35 +93,22 @@ function renderTaskGrid() {
     grid.appendChild(card);
   });
 
-  // タスクカード本体クリック → 選択トグル
   grid.querySelectorAll(".task-card-inner").forEach((el) => {
-    el.addEventListener("click", (e) => {
-      const id = e.currentTarget.dataset.id;
-      toggleTask(id);
-    });
+    el.addEventListener("click", (e) => toggleTask(e.currentTarget.dataset.id));
   });
-
-  // ±ボタン
   grid.querySelectorAll(".counter-btn.plus").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      changeCount(e.currentTarget.dataset.id, 1);
-    });
+    btn.addEventListener("click", (e) => { e.stopPropagation(); changeCount(e.currentTarget.dataset.id, 1); });
   });
   grid.querySelectorAll(".counter-btn.minus").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      changeCount(e.currentTarget.dataset.id, -1);
-    });
+    btn.addEventListener("click", (e) => { e.stopPropagation(); changeCount(e.currentTarget.dataset.id, -1); });
   });
 }
 
 function toggleTask(id) {
-  const taskDef = TASK_DEFS.find((t) => t.id === id);
   if (selectedTasks[id]) {
     delete selectedTasks[id];
   } else {
-    selectedTasks[id] = taskDef.default;
+    selectedTasks[id] = TASK_DEFS.find((t) => t.id === id).default;
   }
   renderTaskGrid();
   updateSendPreview();
@@ -130,16 +117,15 @@ function toggleTask(id) {
 
 function changeCount(id, delta) {
   if (!selectedTasks[id]) return;
-  const taskDef = TASK_DEFS.find((t) => t.id === id);
-  const newVal = Math.max(1, (selectedTasks[id] || taskDef.default) + delta);
-  selectedTasks[id] = newVal;
+  const def = TASK_DEFS.find((t) => t.id === id);
+  selectedTasks[id] = Math.max(1, selectedTasks[id] + delta);
   const valEl = $(`val-${id}`);
-  if (valEl) valEl.textContent = newVal + taskDef.unit;
+  if (valEl) valEl.textContent = selectedTasks[id] + def.unit;
   updateSendPreview();
 }
 
 // =====================================================
-// ★ 緊急度ボタン
+// 緊急度ボタン
 // =====================================================
 $("urgencyButtons").addEventListener("click", (e) => {
   const btn = e.target.closest(".urgency-btn");
@@ -151,7 +137,7 @@ $("urgencyButtons").addEventListener("click", (e) => {
 });
 
 // =====================================================
-// ★ 補足メモ トグル
+// 補足メモ トグル
 // =====================================================
 $("toggleOptional").addEventListener("click", () => {
   const area = $("optionalArea");
@@ -161,7 +147,7 @@ $("toggleOptional").addEventListener("click", () => {
 });
 
 // =====================================================
-// 補足テキスト リアルタイムPII検知
+// 補足テキスト PII検知
 // =====================================================
 $("userInput").addEventListener("input", () => {
   const text = $("userInput").value;
@@ -173,10 +159,10 @@ $("userInput").addEventListener("input", () => {
   }
   const { masked, detected } = detectAndMask(text);
   if (detected.length > 0) {
-    const msg = "⚠️ 個人情報・企業情報の可能性を検知しました：\n" +
+    $("piiAlert").textContent =
+      "⚠️ 個人情報・企業情報の可能性を検知しました：\n" +
       detected.map((d) => `・${d.type}（${d.count}件）`).join("\n") +
       "\n→ 自動マスキングして送信します。";
-    $("piiAlert").textContent = msg;
     $("piiAlert").style.display = "block";
     $("maskedText").textContent = masked;
     $("maskedPreview").style.display = "block";
@@ -188,44 +174,40 @@ $("userInput").addEventListener("input", () => {
 });
 
 // =====================================================
-// ★ 送信テキスト生成（選択タスク → 文字列に変換）
+// 送信テキスト生成
 // =====================================================
 function buildInputText() {
   const taskLines = Object.entries(selectedTasks).map(([id, count]) => {
     const def = TASK_DEFS.find((t) => t.id === id);
     return `${def.label}：${count}${def.unit}`;
   });
-
   const urgencyText = `緊急度：${URGENCY_LABELS[urgencyLevel]}`;
   const optional = $("userInput").value.trim();
   const { masked: maskedOptional } = optional ? detectAndMask(optional) : { masked: "" };
-
   const lines = [...taskLines, urgencyText];
   if (maskedOptional) lines.push(`補足：${maskedOptional}`);
-
   return lines.join("、");
 }
 
 // =====================================================
-// ★ 送信プレビュー更新
+// 送信プレビュー更新
 // =====================================================
 function updateSendPreview() {
   const hasSelection = Object.keys(selectedTasks).length > 0;
-  const preview = $("sendPreview");
   if (hasSelection) {
     $("sendPreviewText").textContent = buildInputText();
-    preview.style.display = "block";
+    $("sendPreview").style.display = "block";
   } else {
-    preview.style.display = "none";
+    $("sendPreview").style.display = "none";
   }
 }
 
 // =====================================================
-// ★ 実行ボタン活性制御
+// 実行ボタン活性制御
 // =====================================================
 function updateRunBtn() {
-  const btn = $("runBtn");
   const hasSelection = Object.keys(selectedTasks).length > 0;
+  const btn = $("runBtn");
   btn.disabled = !hasSelection;
   btn.classList.toggle("run-btn-active", hasSelection);
 }
@@ -249,8 +231,7 @@ function renderSteps(activeIdx) {
 // エージェント実行
 // =====================================================
 async function runAgent() {
-  const hasSelection = Object.keys(selectedTasks).length > 0;
-  if (!hasSelection) {
+  if (Object.keys(selectedTasks).length === 0) {
     alert("タスクを1つ以上選択してください");
     return;
   }
@@ -284,6 +265,7 @@ async function runAgent() {
       try {
         const errJson = JSON.parse(errText);
         errMsg = errJson.error || errMsg;
+        if (errJson.detail) errMsg += "\n詳細：" + errJson.detail;
       } catch (_) {
         errMsg = errText || errMsg;
       }
@@ -302,16 +284,13 @@ async function runAgent() {
         data.server_detected.map((d) => d.type).join(", ") +
         "\n\n" + output;
     }
+    if (data.fallback_used) {
+      output = "ℹ️ Workers AI（フォールバック）で生成\n\n" + output;
+    }
     $("output").textContent = output;
-
   } catch (e) {
     let msg = e.message || String(e);
-    // Workers側からのJSON形式エラーメッセージを展開
-    try {
-      const parsed = JSON.parse(msg);
-      if (parsed.error) msg = parsed.error;
-      if (parsed.detail) msg += "\n詳細：" + parsed.detail;
-    } catch (_) {}
+    try { const p = JSON.parse(msg); if (p.error) msg = p.error; } catch (_) {}
     $("output").textContent = "⚠️ エラー：" + msg;
   }
 }
@@ -355,6 +334,5 @@ $("runBtn").addEventListener("click", runAgent);
 $("loadBtn").addEventListener("click", loadTasks);
 $("clearBtn").addEventListener("click", clearTasks);
 
-// 初期描画
 renderTaskGrid();
 renderSteps(-1);
