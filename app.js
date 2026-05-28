@@ -1,4 +1,4 @@
-const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev;
+const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev";
 
 const $ = (id) => document.getElementById(id);
 
@@ -21,15 +21,11 @@ const PII_PATTERNS = [
   { name: "URL", regex: /https?:\/\/[^\s　]+/g, mask: "[URL]" },
   { name: "クレジットカード番号", regex: /\b(?:\d[ -]*?){13,16}\b/g, mask: "[CARD]" },
   { name: "マイナンバー風", regex: /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, mask: "[ID]" },
-  // 企業名（株式会社○○、○○株式会社、（株）、Inc./Ltd./Co./Corp.）
   { name: "企業名", regex: /(?:株式会社|（株）|\(株\))\s?[一-龯ァ-ヶーA-Za-z0-9]+/g, mask: "[COMPANY]" },
   { name: "企業名(後置)", regex: /[一-龯ァ-ヶーA-Za-z0-9]+(?:株式会社|（株）|\(株\)|有限会社|合同会社)/g, mask: "[COMPANY]" },
   { name: "英文社名", regex: /\b[A-Z][A-Za-z0-9&]+\s+(?:Inc|Ltd|Corp|Co|LLC|GmbH)\.?\b/g, mask: "[COMPANY]" },
-  // 住所（都道府県＋市区町村パターン）
   { name: "住所", regex: /(?:北海道|青森県|岩手県|宮城県|秋田県|山形県|福島県|茨城県|栃木県|群馬県|埼玉県|千葉県|東京都|神奈川県|新潟県|富山県|石川県|福井県|山梨県|長野県|岐阜県|静岡県|愛知県|三重県|滋賀県|京都府|大阪府|兵庫県|奈良県|和歌山県|鳥取県|島根県|岡山県|広島県|山口県|徳島県|香川県|愛媛県|高知県|福岡県|佐賀県|長崎県|熊本県|大分県|宮崎県|鹿児島県|沖縄県)[^\s　、。]+/g, mask: "[ADDRESS]" },
-  // 氏名（カタカナフルネーム：姓名がスペース区切り or 連続4文字以上）
   { name: "カタカナ氏名", regex: /[ァ-ヶー]{2,}[\s　][ァ-ヶー]{2,}/g, mask: "[NAME]" },
-  // 漢字氏名（2〜4文字＋様/さん/氏）
   { name: "氏名敬称", regex: /[一-龯]{2,4}\s?(?:様|さん|氏|殿|君|ちゃん)/g, mask: "[NAME]" },
 ];
 
@@ -119,6 +115,10 @@ async function runAgent() {
   renderSteps(0);
 
   try {
+    // =====================================================
+    // 修正②: res.json()の二重呼び出しバグを修正
+    // エラー時は res.text() でボディを読み、成功時のみ res.json() を呼ぶ
+    // =====================================================
     const res = await fetch(`${WORKER_URL}/agent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -126,8 +126,15 @@ async function runAgent() {
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
+      const errText = await res.text();
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errJson = JSON.parse(errText);
+        errMsg = errJson.error || errMsg;
+      } catch (_) {
+        errMsg = errText || errMsg;
+      }
+      throw new Error(errMsg);
     }
 
     for (let i = 1; i <= STEP_LABELS.length; i++) {
