@@ -12,6 +12,30 @@ const STEP_LABELS = [
 ];
 
 // =====================================================
+// ★ タスク定義（BtoB法人営業向けルーティン）
+// =====================================================
+const TASK_DEFS = [
+  { id: "visit",    icon: "🏢", label: "訪問・商談",   unit: "件", default: 1 },
+  { id: "estimate", icon: "📄", label: "見積作成",     unit: "件", default: 1 },
+  { id: "invoice",  icon: "🧾", label: "請求書発行",   unit: "件", default: 1 },
+  { id: "followup", icon: "📞", label: "フォロー連絡", unit: "件", default: 2 },
+  { id: "mail",     icon: "✉️", label: "メール対応",   unit: "件", default: 5 },
+  { id: "proposal", icon: "📊", label: "提案資料作成", unit: "件", default: 1 },
+  { id: "mtg",      icon: "👥", label: "社内MTG",      unit: "回", default: 1 },
+  { id: "report",   icon: "📝", label: "日報・報告書", unit: "件", default: 1 },
+  { id: "pipeline", icon: "🔄", label: "パイプライン整理", unit: "回", default: 1 },
+  { id: "contract", icon: "🖊️", label: "契約手続き",  unit: "件", default: 1 },
+  { id: "newlead",  icon: "🔍", label: "新規リード",   unit: "件", default: 3 },
+  { id: "approval", icon: "✅", label: "社内承認依頼", unit: "件", default: 1 },
+];
+
+const URGENCY_LABELS = { low: "低（通常運用）", mid: "中（一部急ぎあり）", high: "高（今日中に要完了）" };
+
+// 選択状態管理
+let selectedTasks = {}; // { taskId: count }
+let urgencyLevel = "low";
+
+// =====================================================
 // PII検知パターン（クライアント側・第一防衛線）
 // =====================================================
 const PII_PATTERNS = [
@@ -29,17 +53,13 @@ const PII_PATTERNS = [
   { name: "氏名敬称", regex: /[一-龯]{2,4}\s?(?:様|さん|氏|殿|君|ちゃん)/g, mask: "[NAME]" },
 ];
 
-// =====================================================
-// マスキング処理
-// =====================================================
 function detectAndMask(text) {
   let masked = text;
   const detected = [];
-
   for (const p of PII_PATTERNS) {
     const matches = masked.match(p.regex);
     if (matches && matches.length > 0) {
-      detected.push({ type: p.name, count: matches.length, samples: matches.slice(0, 2) });
+      detected.push({ type: p.name, count: matches.length });
       masked = masked.replace(p.regex, p.mask);
     }
   }
@@ -47,13 +67,108 @@ function detectAndMask(text) {
 }
 
 // =====================================================
-// 入力リアルタイム検知
+// ★ タスクグリッド描画
+// =====================================================
+function renderTaskGrid() {
+  const grid = $("taskGrid");
+  grid.innerHTML = "";
+  TASK_DEFS.forEach((task) => {
+    const card = document.createElement("div");
+    card.className = "task-card" + (selectedTasks[task.id] ? " selected" : "");
+    card.dataset.id = task.id;
+
+    const count = selectedTasks[task.id] || task.default;
+
+    card.innerHTML = `
+      <div class="task-card-inner" data-id="${task.id}">
+        <span class="task-icon">${task.icon}</span>
+        <span class="task-label">${task.label}</span>
+      </div>
+      <div class="task-counter ${selectedTasks[task.id] ? "" : "hidden"}" id="counter-${task.id}">
+        <button class="counter-btn minus" data-id="${task.id}">－</button>
+        <span class="counter-val" id="val-${task.id}">${count}${task.unit}</span>
+        <button class="counter-btn plus" data-id="${task.id}">＋</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // タスクカード本体クリック → 選択トグル
+  grid.querySelectorAll(".task-card-inner").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      const id = e.currentTarget.dataset.id;
+      toggleTask(id);
+    });
+  });
+
+  // ±ボタン
+  grid.querySelectorAll(".counter-btn.plus").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      changeCount(e.currentTarget.dataset.id, 1);
+    });
+  });
+  grid.querySelectorAll(".counter-btn.minus").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      changeCount(e.currentTarget.dataset.id, -1);
+    });
+  });
+}
+
+function toggleTask(id) {
+  const taskDef = TASK_DEFS.find((t) => t.id === id);
+  if (selectedTasks[id]) {
+    delete selectedTasks[id];
+  } else {
+    selectedTasks[id] = taskDef.default;
+  }
+  renderTaskGrid();
+  updateSendPreview();
+  updateRunBtn();
+}
+
+function changeCount(id, delta) {
+  if (!selectedTasks[id]) return;
+  const taskDef = TASK_DEFS.find((t) => t.id === id);
+  const newVal = Math.max(1, (selectedTasks[id] || taskDef.default) + delta);
+  selectedTasks[id] = newVal;
+  const valEl = $(`val-${id}`);
+  if (valEl) valEl.textContent = newVal + taskDef.unit;
+  updateSendPreview();
+}
+
+// =====================================================
+// ★ 緊急度ボタン
+// =====================================================
+$("urgencyButtons").addEventListener("click", (e) => {
+  const btn = e.target.closest(".urgency-btn");
+  if (!btn) return;
+  urgencyLevel = btn.dataset.level;
+  document.querySelectorAll(".urgency-btn").forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  updateSendPreview();
+});
+
+// =====================================================
+// ★ 補足メモ トグル
+// =====================================================
+$("toggleOptional").addEventListener("click", () => {
+  const area = $("optionalArea");
+  const isHidden = area.style.display === "none";
+  area.style.display = isHidden ? "block" : "none";
+  $("toggleOptional").textContent = isHidden ? "－ 補足メモを閉じる" : "＋ 補足メモを追加（任意）";
+});
+
+// =====================================================
+// 補足テキスト リアルタイムPII検知
 // =====================================================
 $("userInput").addEventListener("input", () => {
   const text = $("userInput").value;
   if (!text.trim()) {
     $("piiAlert").style.display = "none";
     $("maskedPreview").style.display = "none";
+    updateSendPreview();
     return;
   }
   const { masked, detected } = detectAndMask(text);
@@ -69,7 +184,51 @@ $("userInput").addEventListener("input", () => {
     $("piiAlert").style.display = "none";
     $("maskedPreview").style.display = "none";
   }
+  updateSendPreview();
 });
+
+// =====================================================
+// ★ 送信テキスト生成（選択タスク → 文字列に変換）
+// =====================================================
+function buildInputText() {
+  const taskLines = Object.entries(selectedTasks).map(([id, count]) => {
+    const def = TASK_DEFS.find((t) => t.id === id);
+    return `${def.label}：${count}${def.unit}`;
+  });
+
+  const urgencyText = `緊急度：${URGENCY_LABELS[urgencyLevel]}`;
+  const optional = $("userInput").value.trim();
+  const { masked: maskedOptional } = optional ? detectAndMask(optional) : { masked: "" };
+
+  const lines = [...taskLines, urgencyText];
+  if (maskedOptional) lines.push(`補足：${maskedOptional}`);
+
+  return lines.join("、");
+}
+
+// =====================================================
+// ★ 送信プレビュー更新
+// =====================================================
+function updateSendPreview() {
+  const hasSelection = Object.keys(selectedTasks).length > 0;
+  const preview = $("sendPreview");
+  if (hasSelection) {
+    $("sendPreviewText").textContent = buildInputText();
+    preview.style.display = "block";
+  } else {
+    preview.style.display = "none";
+  }
+}
+
+// =====================================================
+// ★ 実行ボタン活性制御
+// =====================================================
+function updateRunBtn() {
+  const btn = $("runBtn");
+  const hasSelection = Object.keys(selectedTasks).length > 0;
+  btn.disabled = !hasSelection;
+  btn.classList.toggle("run-btn-active", hasSelection);
+}
 
 // =====================================================
 // ステップ可視化
@@ -90,23 +249,21 @@ function renderSteps(activeIdx) {
 // エージェント実行
 // =====================================================
 async function runAgent() {
-  const rawText = $("userInput").value.trim();
-  const mode = $("mode").value;
-  const strict = $("strictMode").checked;
-
-  if (!rawText) {
-    alert("入力を記入してください");
+  const hasSelection = Object.keys(selectedTasks).length > 0;
+  if (!hasSelection) {
+    alert("タスクを1つ以上選択してください");
     return;
   }
 
-  // 第一段マスキング（クライアント）
-  const { masked, detected } = detectAndMask(rawText);
+  const mode = $("mode").value;
+  const strict = $("strictMode").checked;
+  const inputText = buildInputText();
+  const { masked, detected } = detectAndMask(inputText);
 
   if (detected.length > 0 && strict) {
     const ok = confirm(
       `個人情報・企業情報が${detected.length}種類検知されました。\n` +
-      `自動マスキング後の内容で送信しますか？\n\n` +
-      `（送信される内容）\n${masked}`
+      `自動マスキング後の内容で送信しますか？\n\n（送信内容）\n${masked}`
     );
     if (!ok) return;
   }
@@ -115,10 +272,6 @@ async function runAgent() {
   renderSteps(0);
 
   try {
-    // =====================================================
-    // 修正②: res.json()の二重呼び出しバグを修正
-    // エラー時は res.text() でボディを読み、成功時のみ res.json() を呼ぶ
-    // =====================================================
     const res = await fetch(`${WORKER_URL}/agent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -193,4 +346,7 @@ async function clearTasks() {
 $("runBtn").addEventListener("click", runAgent);
 $("loadBtn").addEventListener("click", loadTasks);
 $("clearBtn").addEventListener("click", clearTasks);
+
+// 初期描画
+renderTaskGrid();
 renderSteps(-1);
