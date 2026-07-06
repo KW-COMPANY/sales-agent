@@ -1,3 +1,4 @@
+// File: app.js
 const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev";
 
 const $ = (id) => document.getElementById(id);
@@ -34,6 +35,29 @@ const URGENCY_LABELS = {
 
 let selectedTasks = {};
 let urgencyLevel = "low";
+let isRunning = false;
+let allTasksCache = [];
+
+// =====================================================
+// トースト通知（alert代替）
+// =====================================================
+function showToast(message, type = "info") {
+  const container = $("toastContainer");
+  if (!container) { alert(message); return; }
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("show"));
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, 3200);
+}
+
+function showConfirmToast(message) {
+  return confirm(message); // 確認ダイアログは誤操作防止のため維持
+}
 
 // =====================================================
 // PII検知パターン
@@ -208,8 +232,15 @@ function updateSendPreview() {
 function updateRunBtn() {
   const hasSelection = Object.keys(selectedTasks).length > 0;
   const btn = $("runBtn");
-  btn.disabled = !hasSelection;
-  btn.classList.toggle("run-btn-active", hasSelection);
+  btn.disabled = !hasSelection || isRunning;
+  btn.classList.toggle("run-btn-active", hasSelection && !isRunning);
+}
+
+function setRunningState(running) {
+  isRunning = running;
+  $("runSpinner").style.display = running ? "inline-block" : "none";
+  $("runBtnLabel").textContent = running ? "実行中…" : "エージェント実行";
+  updateRunBtn();
 }
 
 // =====================================================
@@ -228,11 +259,47 @@ function renderSteps(activeIdx) {
 }
 
 // =====================================================
+// 出力結果の整形表示（■見出しをセクション化）
+// =====================================================
+function renderOutput(rawText) {
+  const outputEl = $("output");
+  outputEl.innerHTML = "";
+
+  const lines = rawText.split("\n");
+  let currentSection = null;
+
+  lines.forEach((line) => {
+    if (/^■/.test(line.trim())) {
+      const heading = document.createElement("div");
+      heading.className = "output-heading";
+      heading.textContent = line.trim();
+      outputEl.appendChild(heading);
+      currentSection = document.createElement("div");
+      currentSection.className = "output-section";
+      outputEl.appendChild(currentSection);
+    } else if (currentSection) {
+      const p = document.createElement("div");
+      p.className = "output-line";
+      p.textContent = line;
+      currentSection.appendChild(p);
+    } else {
+      const p = document.createElement("div");
+      p.className = "output-line";
+      p.textContent = line;
+      outputEl.appendChild(p);
+    }
+  });
+
+  $("outputActions").style.display = rawText.trim() ? "flex" : "none";
+}
+
+// =====================================================
 // エージェント実行
 // =====================================================
 async function runAgent() {
+  if (isRunning) return;
   if (Object.keys(selectedTasks).length === 0) {
-    alert("タスクを1つ以上選択してください");
+    showToast("タスクを1つ以上選択してください", "warn");
     return;
   }
 
@@ -242,14 +309,16 @@ async function runAgent() {
   const { masked, detected } = detectAndMask(inputText);
 
   if (detected.length > 0 && strict) {
-    const ok = confirm(
+    const ok = showConfirmToast(
       `個人情報・企業情報が${detected.length}種類検知されました。\n` +
       `自動マスキング後の内容で送信しますか？\n\n（送信内容）\n${masked}`
     );
     if (!ok) return;
   }
 
+  setRunningState(true);
   $("output").textContent = "実行中…";
+  $("outputActions").style.display = "none";
   renderSteps(0);
 
   try {
@@ -287,46 +356,103 @@ async function runAgent() {
     if (data.fallback_used) {
       output = "ℹ️ Workers AI（フォールバック）で生成\n\n" + output;
     }
-    $("output").textContent = output;
+    renderOutput(output);
   } catch (e) {
     let msg = e.message || String(e);
     try { const p = JSON.parse(msg); if (p.error) msg = p.error; } catch (_) {}
     $("output").textContent = "⚠️ エラー：" + msg;
+    $("outputActions").style.display = "none";
+    showToast("実行中にエラーが発生しました", "error");
+  } finally {
+    setRunningState(false);
   }
 }
 
 // =====================================================
+// 結果コピー／ダウンロード
+// =====================================================
+function getOutputPlainText() {
+  return $("output").innerText || $("output").textContent || "";
+}
+
+$("copyBtn")?.addEventListener("click", async () => {
+  const text = getOutputPlainText();
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("結果をコピーしました", "success");
+  } catch {
+    showToast("コピーに失敗しました", "error");
+  }
+});
+
+$("downloadBtn")?.addEventListener("click", () => {
+  const text = getOutputPlainText();
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `salespilot_result_${Date.now()}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast("テキストファイルを保存しました", "success");
+});
+
+// =====================================================
 // 保存タスク一覧
 // =====================================================
+function renderTaskList() {
+  const ul = $("taskList");
+  const category = $("filterCategory").value;
+  const mode = $("filterMode").value;
+
+  const filtered = allTasksCache.filter((t) => {
+    if (category && t.category !== category) return false;
+    if (mode && t.mode !== mode) return false;
+    return true;
+  });
+
+  ul.innerHTML = "";
+  if (filtered.length === 0) {
+    ul.innerHTML = "<li>該当する保存タスクはありません</li>";
+    return;
+  }
+  filtered.forEach((t) => {
+    const li = document.createElement("li");
+    li.textContent = `[${t.date}] (${t.category}/${t.mode}) ${t.summary}`;
+    ul.appendChild(li);
+  });
+}
+
 async function loadTasks() {
   try {
     const res = await fetch(`${WORKER_URL}/tasks`);
     const data = await res.json();
-    const ul = $("taskList");
-    ul.innerHTML = "";
-    (data.tasks || []).forEach((t) => {
-      const li = document.createElement("li");
-      li.textContent = `[${t.date}] (${t.category}/${t.mode}) ${t.summary}`;
-      ul.appendChild(li);
-    });
-    if (!data.tasks?.length) ul.innerHTML = "<li>保存タスクはまだありません</li>";
+    allTasksCache = data.tasks || [];
+    renderTaskList();
+    showToast(`${allTasksCache.length}件のタスクを読み込みました`, "success");
   } catch (e) {
-    alert("読み込み失敗：" + e.message);
+    showToast("読み込み失敗：" + e.message, "error");
   }
 }
+
+$("filterCategory").addEventListener("change", renderTaskList);
+$("filterMode").addEventListener("change", renderTaskList);
 
 // =====================================================
 // 全削除
 // =====================================================
 async function clearTasks() {
-  if (!confirm("保存済みタスクをすべて削除します。よろしいですか？")) return;
+  const ok = showConfirmToast("保存済みタスクをすべて削除します。よろしいですか？");
+  if (!ok) return;
   try {
     const res = await fetch(`${WORKER_URL}/tasks`, { method: "DELETE" });
     const data = await res.json();
-    alert(`${data.deleted || 0}件削除しました`);
+    showToast(`${data.deleted || 0}件削除しました`, "success");
     loadTasks();
   } catch (e) {
-    alert("削除失敗：" + e.message);
+    showToast("削除失敗：" + e.message, "error");
   }
 }
 
