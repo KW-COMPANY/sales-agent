@@ -1,3 +1,4 @@
+/* File: style.css */
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -325,6 +326,13 @@ textarea:focus {
   gap: 10px;
 }
 
+.mode-help {
+  margin-left: 4px;
+  cursor: help;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
 select {
   padding: 7px 12px;
   border-radius: 8px;
@@ -375,6 +383,9 @@ button:active {
   border-radius: 10px;
   transition: background 0.22s, box-shadow 0.22s, transform 0.1s;
   letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .run-btn:hover {
@@ -399,6 +410,19 @@ button:active {
   opacity: 0.65;
   transform: none;
   box-shadow: none;
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* =====================================================
@@ -443,9 +467,73 @@ button:active {
   font-family: inherit;
 }
 
+.output-heading {
+  font-weight: 800;
+  color: #1d4ed8;
+  margin: 14px 0 6px;
+  font-size: 0.98rem;
+  border-bottom: 1.5px dashed #bfdbfe;
+  padding-bottom: 4px;
+}
+
+.output-heading:first-child {
+  margin-top: 0;
+}
+
+.output-section {
+  margin-bottom: 4px;
+}
+
+.output-line {
+  font-size: 0.92rem;
+  line-height: 1.75;
+}
+
+.output-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.ghost-btn {
+  background: #ffffff;
+  color: #2563eb;
+  border: 1.5px solid #bfdbfe;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ghost-btn:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+  box-shadow: none;
+  transform: none;
+}
+
 /* =====================================================
-   保存タスクリスト
+   保存タスクリスト・フィルタ
 ===================================================== */
+.task-filter-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  font-size: 0.86rem;
+  color: #374151;
+}
+
+.task-filter-row select {
+  margin-left: 6px;
+}
+
+.task-buttons-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
 .task-list {
   list-style: none;
   padding: 0;
@@ -564,4 +652,67 @@ button:active {
 .danger:hover {
   background: #b91c1c;
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+/* =====================================================
+   トースト通知
+===================================================== */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+}
+
+.toast {
+  min-width: 220px;
+  max-width: 320px;
+  background: #1f2937;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-success { background: #059669; }
+.toast-error   { background: #dc2626; }
+.toast-warn    { background: #d97706; }
+.toast-info    { background: #1f2937; }
+
+/* =====================================================
+   レスポンシブ調整
+===================================================== */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 12px;
+  }
+  .task-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .controls .run-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .task-filter-row {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
