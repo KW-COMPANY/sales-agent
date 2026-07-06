@@ -1,4 +1,3 @@
-// File: app.js
 const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev";
 
 const $ = (id) => document.getElementById(id);
@@ -259,7 +258,7 @@ function renderSteps(activeIdx) {
 }
 
 // =====================================================
-// 出力結果の整形表示（■見出しをセクション化）
+// 出力結果の整形表示
 // =====================================================
 function renderOutput(rawText) {
   const outputEl = $("output");
