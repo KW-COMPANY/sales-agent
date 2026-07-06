@@ -1,3 +1,4 @@
+// File: app.js
 const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev";
 
 const $ = (id) => document.getElementById(id);
@@ -198,18 +199,20 @@ $("userInput").addEventListener("input", () => {
 
 // =====================================================
 // 送信テキスト生成
+// 【修正】箇条書き形式にし、AIがタスクリストとして
+// 認識しやすい構造に変更
 // =====================================================
 function buildInputText() {
   const taskLines = Object.entries(selectedTasks).map(([id, count]) => {
     const def = TASK_DEFS.find((t) => t.id === id);
-    return `${def.label}：${count}${def.unit}`;
+    return `・${def.label}：${count}${def.unit}`;
   });
-  const urgencyText = `緊急度：${URGENCY_LABELS[urgencyLevel]}`;
+  const urgencyText = `・緊急度：${URGENCY_LABELS[urgencyLevel]}`;
   const optional = $("userInput").value.trim();
   const { masked: maskedOptional } = optional ? detectAndMask(optional) : { masked: "" };
   const lines = [...taskLines, urgencyText];
-  if (maskedOptional) lines.push(`補足：${maskedOptional}`);
-  return lines.join("、");
+  if (maskedOptional) lines.push(`・補足：${maskedOptional}`);
+  return lines.join("\n");
 }
 
 // =====================================================
@@ -258,7 +261,7 @@ function renderSteps(activeIdx) {
 }
 
 // =====================================================
-// 出力結果の整形表示
+// 出力結果の整形表示（■見出しをセクション化）
 // =====================================================
 function renderOutput(rawText) {
   const outputEl = $("output");
@@ -294,6 +297,7 @@ function renderOutput(rawText) {
 
 // =====================================================
 // エージェント実行
+// 【修正】選択タスクのID配列(task_ids)をサーバーに送信
 // =====================================================
 async function runAgent() {
   if (isRunning) return;
@@ -306,6 +310,7 @@ async function runAgent() {
   const strict = $("strictMode").checked;
   const inputText = buildInputText();
   const { masked, detected } = detectAndMask(inputText);
+  const taskIds = Object.keys(selectedTasks);
 
   if (detected.length > 0 && strict) {
     const ok = showConfirmToast(
@@ -324,7 +329,13 @@ async function runAgent() {
     const res = await fetch(`${WORKER_URL}/agent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: masked, mode, client_masked: true }),
+      body: JSON.stringify({
+        text: masked,
+        mode,
+        client_masked: true,
+        task_ids: taskIds,
+        urgency: urgencyLevel,
+      }),
     });
 
     if (!res.ok) {
