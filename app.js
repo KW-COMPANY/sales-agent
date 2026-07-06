@@ -1,4 +1,3 @@
-// File: app.js
 const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev";
 
 const $ = (id) => document.getElementById(id);
@@ -199,8 +198,6 @@ $("userInput").addEventListener("input", () => {
 
 // =====================================================
 // 送信テキスト生成
-// 【修正】箇条書き形式にし、AIがタスクリストとして
-// 認識しやすい構造に変更
 // =====================================================
 function buildInputText() {
   const taskLines = Object.entries(selectedTasks).map(([id, count]) => {
@@ -261,7 +258,7 @@ function renderSteps(activeIdx) {
 }
 
 // =====================================================
-// 出力結果の整形表示（■見出しをセクション化）
+// 出力結果の整形表示
 // =====================================================
 function renderOutput(rawText) {
   const outputEl = $("output");
@@ -297,7 +294,6 @@ function renderOutput(rawText) {
 
 // =====================================================
 // エージェント実行
-// 【修正】選択タスクのID配列(task_ids)をサーバーに送信
 // =====================================================
 async function runAgent() {
   if (isRunning) return;
