@@ -1,3 +1,4 @@
+// File: app.js
 const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev";
 
 const $ = (id) => document.getElementById(id);
@@ -258,7 +259,7 @@ function renderSteps(activeIdx) {
 }
 
 // =====================================================
-// 出力結果の整形表示
+// 出力結果の整形表示（■見出しをセクション化）
 // =====================================================
 function renderOutput(rawText) {
   const outputEl = $("output");
@@ -363,6 +364,13 @@ async function runAgent() {
       output = "ℹ️ Workers AI（フォールバック）で生成\n\n" + output;
     }
     renderOutput(output);
+
+    if (data.truncated) {
+      showToast(
+        "⚠️ 回答が長くなったため、一部省略された可能性があります。タスク数を絞るか、モードを分けて再実行してください。",
+        "warn"
+      );
+    }
   } catch (e) {
     let msg = e.message || String(e);
     try { const p = JSON.parse(msg); if (p.error) msg = p.error; } catch (_) {}
