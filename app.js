@@ -36,9 +36,9 @@ const URGENCY_LABELS = {
 // クイックプリセット（よくある1日のパターンを一括選択）
 // =====================================================
 const QUICK_PRESETS = [
-  { id: "sales_heavy", label: "🏃 商談中心の日", tasks: { visit: 2, followup: 2, mail: 3, report: 1 } },
-  { id: "admin_heavy",  label: "🗂 事務処理の日",  tasks: { estimate: 2, invoice: 1, contract: 1, approval: 1, report: 1 } },
-  { id: "new_biz",      label: "🔍 新規開拓の日",  tasks: { newlead: 5, mail: 4, followup: 2, report: 1 } },
+  { id: "sales_heavy", label: "🏃 商談中心", tasks: { visit: 2, followup: 2, mail: 3, report: 1 } },
+  { id: "admin_heavy",  label: "🗂 事務処理中心",  tasks: { estimate: 2, invoice: 1, contract: 1, approval: 1, report: 1 } },
+  { id: "new_biz",      label: "🔍 新規開拓中心",  tasks: { newlead: 5, mail: 4, followup: 2, report: 1 } },
 ];
 
 let selectedTasks = {};
