@@ -1,3 +1,4 @@
+/* File: style.css */
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -76,6 +77,33 @@ body {
   padding-left: 12px;
   color: #111827;
   letter-spacing: 0.01em;
+}
+
+/* =====================================================
+   クイックプリセット
+===================================================== */
+.preset-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.preset-btn {
+  background: #ffffff;
+  color: #1d4ed8;
+  border: 1.5px solid #bfdbfe;
+  padding: 7px 14px;
+  border-radius: 99px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.preset-btn:hover {
+  background: #eff6ff;
+  border-color: #60a5fa;
+  color: #1d4ed8;
+  transform: translateY(-1px);
 }
 
 /* =====================================================
@@ -509,6 +537,13 @@ button:active {
   color: #1d4ed8;
   box-shadow: none;
   transform: none;
+}
+
+/* =====================================================
+   再試行エリア
+===================================================== */
+.retry-area {
+  margin-top: 14px;
 }
 
 /* =====================================================
