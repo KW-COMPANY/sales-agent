@@ -1,4 +1,3 @@
-// File: app.js
 const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev";
 
 const $ = (id) => document.getElementById(id);
