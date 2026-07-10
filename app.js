@@ -1,3 +1,4 @@
+// File: app.js
 const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev";
 
 const $ = (id) => document.getElementById(id);
@@ -5,8 +6,8 @@ const $ = (id) => document.getElementById(id);
 const STEP_LABELS = [
   "①クライアント側PII検知＆マスキング",
   "②サーバー側で再サニタイズ",
-  "③Workers AIで入力分類",
-  "④KVから営業ナレッジ取得",
+  "③入力分類（キーワード判定）",
+  "④KVからナレッジ検索＆取得",
   "⑤Geminiでタスク分解＆スケジュール提案",
   "⑥出力もPIIスキャンしてから返却",
 ];
@@ -31,6 +32,15 @@ const URGENCY_LABELS = {
   mid:  "中（一部急ぎあり）",
   high: "高（今日中に要完了）",
 };
+
+// =====================================================
+// クイックプリセット（よくある1日のパターンを一括選択）
+// =====================================================
+const QUICK_PRESETS = [
+  { id: "sales_heavy", label: "🏃 商談中心の日", tasks: { visit: 2, followup: 2, mail: 3, report: 1 } },
+  { id: "admin_heavy",  label: "🗂 事務処理の日",  tasks: { estimate: 2, invoice: 1, contract: 1, approval: 1, report: 1 } },
+  { id: "new_biz",      label: "🔍 新規開拓の日",  tasks: { newlead: 5, mail: 4, followup: 2, report: 1 } },
+];
 
 let selectedTasks = {};
 let urgencyLevel = "low";
@@ -87,6 +97,33 @@ function detectAndMask(text) {
     }
   }
   return { masked, detected };
+}
+
+// =====================================================
+// クイックプリセット描画・適用
+// =====================================================
+function renderPresetButtons() {
+  const row = $("presetRow");
+  if (!row) return;
+  row.innerHTML = "";
+  QUICK_PRESETS.forEach((p) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "preset-btn";
+    btn.textContent = p.label;
+    btn.addEventListener("click", () => applyPreset(p.id));
+    row.appendChild(btn);
+  });
+}
+
+function applyPreset(id) {
+  const preset = QUICK_PRESETS.find((p) => p.id === id);
+  if (!preset) return;
+  selectedTasks = { ...preset.tasks };
+  renderTaskGrid();
+  updateSendPreview();
+  updateRunBtn();
+  showToast(`「${preset.label}」を適用しました`, "success");
 }
 
 // =====================================================
@@ -295,12 +332,16 @@ function renderOutput(rawText) {
 // =====================================================
 // エージェント実行
 // =====================================================
+let lastFailed = false;
+
 async function runAgent() {
   if (isRunning) return;
   if (Object.keys(selectedTasks).length === 0) {
     showToast("タスクを1つ以上選択してください", "warn");
     return;
   }
+
+  $("retryArea").style.display = "none";
 
   const mode = $("mode").value;
   const strict = $("strictMode").checked;
@@ -320,6 +361,7 @@ async function runAgent() {
   $("output").textContent = "実行中…";
   $("outputActions").style.display = "none";
   renderSteps(0);
+  lastFailed = false;
 
   try {
     const res = await fetch(`${WORKER_URL}/agent`, {
@@ -375,11 +417,18 @@ async function runAgent() {
     try { const p = JSON.parse(msg); if (p.error) msg = p.error; } catch (_) {}
     $("output").textContent = "⚠️ エラー：" + msg;
     $("outputActions").style.display = "none";
+    lastFailed = true;
+    $("retryArea").style.display = "block";
     showToast("実行中にエラーが発生しました", "error");
   } finally {
     setRunningState(false);
   }
 }
+
+$("retryBtn")?.addEventListener("click", () => {
+  $("retryArea").style.display = "none";
+  runAgent();
+});
 
 // =====================================================
 // 結果コピー／ダウンロード
@@ -438,15 +487,15 @@ function renderTaskList() {
   });
 }
 
-async function loadTasks() {
+async function loadTasks(silent) {
   try {
     const res = await fetch(`${WORKER_URL}/tasks`);
     const data = await res.json();
     allTasksCache = data.tasks || [];
     renderTaskList();
-    showToast(`${allTasksCache.length}件のタスクを読み込みました`, "success");
+    if (!silent) showToast(`${allTasksCache.length}件のタスクを読み込みました`, "success");
   } catch (e) {
-    showToast("読み込み失敗：" + e.message, "error");
+    if (!silent) showToast("読み込み失敗：" + e.message, "error");
   }
 }
 
@@ -475,3 +524,5 @@ $("clearBtn").addEventListener("click", clearTasks);
 
 renderTaskGrid();
 renderSteps(-1);
+renderPresetButtons();
+loadTasks(true); // 初回は自動で静かに読み込む
