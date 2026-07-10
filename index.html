@@ -1,3 +1,5 @@
+<!-- Output: html -->
+<!-- File: index.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -26,7 +28,9 @@
     <!-- タスク選択UI -->
     <section class="card">
       <h2>📋 今日のタスクを選択</h2>
-      <p class="ui-hint">タップして選択 → 件数を調整 → 実行</p>
+      <p class="ui-hint">タップして選択 → 件数を調整 → 実行（下のボタンでよくあるパターンを一括選択もできます）</p>
+
+      <div class="preset-row" id="presetRow"></div>
 
       <div class="task-grid" id="taskGrid"></div>
 
@@ -99,6 +103,9 @@
       <div class="output-actions" id="outputActions" style="display:none">
         <button id="copyBtn" class="ghost-btn">📋 結果をコピー</button>
         <button id="downloadBtn" class="ghost-btn">💾 テキストで保存</button>
+      </div>
+      <div class="retry-area" id="retryArea" style="display:none">
+        <button id="retryBtn" class="ghost-btn">🔄 再試行する</button>
       </div>
     </section>
 
