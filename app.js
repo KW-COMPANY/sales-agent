@@ -1,3 +1,4 @@
+// File: app.js
 const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev";
 
 const $ = (id) => document.getElementById(id);
@@ -6,7 +7,7 @@ const STEP_LABELS = [
   "①クライアント側PII検知＆マスキング",
   "②サーバー側で再サニタイズ",
   "③入力分類（キーワード判定）",
-  "④KVからナレッジ検索＆取得",
+  "④KVからナレッジ検索＆取得（学習済み優先）",
   "⑤Geminiでタスク分解＆スケジュール提案",
   "⑥出力もPIIスキャンしてから返却",
 ];
@@ -45,6 +46,7 @@ let selectedTasks = {};
 let urgencyLevel = "low";
 let isRunning = false;
 let allTasksCache = [];
+let lastRunId = null; // Closed Loop: 直近の提案IDを保持
 
 // =====================================================
 // トースト通知（alert代替）
@@ -341,6 +343,7 @@ async function runAgent() {
   }
 
   $("retryArea").style.display = "none";
+  hideFeedback(); // 前回のフィードバックUIを閉じる
 
   const mode = $("mode").value;
   const strict = $("strictMode").checked;
@@ -361,6 +364,7 @@ async function runAgent() {
   $("outputActions").style.display = "none";
   renderSteps(0);
   lastFailed = false;
+  lastRunId = null;
 
   try {
     const res = await fetch(`${WORKER_URL}/agent`, {
@@ -394,6 +398,7 @@ async function runAgent() {
     }
 
     const data = await res.json();
+    lastRunId = data.run_id || null; // Closed Loop: フィードバック用IDを保持
     let output = data.result || "結果が空でした";
     if (data.server_detected && data.server_detected.length > 0) {
       output = "🛡 サーバー側で追加検知された項目: " +
@@ -405,12 +410,29 @@ async function runAgent() {
     }
     renderOutput(output);
 
+    // 使用モデル・学習済みナレッジ活用を表示（透明性向上）
+    const badge = $("modelBadge");
+    if (badge) {
+      let bText = data.used_model ? `🧠 使用AI：${data.used_model}` : "";
+      if (data.learned_knowledge_used) {
+        bText += `　｜　📚 学習済みナレッジ ${data.learned_knowledge_used} 件を活用`;
+      }
+      badge.textContent = bText;
+      badge.style.display = bText ? "block" : "none";
+    }
+
     if (data.truncated) {
       showToast(
         "⚠️ 回答が長くなったため、一部省略された可能性があります。タスク数を絞るか、モードを分けて再実行してください。",
         "warn"
       );
     }
+
+    // Closed Loop: 提案が返ったらフィードバックUIを表示
+    if (lastRunId) showFeedback();
+
+    // 学習状況メーターを更新
+    loadMetrics(true);
   } catch (e) {
     let msg = e.message || String(e);
     try { const p = JSON.parse(msg); if (p.error) msg = p.error; } catch (_) {}
@@ -428,6 +450,109 @@ $("retryBtn")?.addEventListener("click", () => {
   $("retryArea").style.display = "none";
   runAgent();
 });
+
+// =====================================================
+// Closed Loop: フィードバックUI
+// =====================================================
+function showFeedback() {
+  const area = $("feedbackArea");
+  if (!area) return;
+  area.style.display = "block";
+  const editBox = $("feedbackEditArea");
+  if (editBox) editBox.style.display = "none";
+  const status = $("feedbackStatus");
+  if (status) { status.textContent = ""; status.style.display = "none"; }
+}
+
+function hideFeedback() {
+  const area = $("feedbackArea");
+  if (area) area.style.display = "none";
+}
+
+async function sendFeedback(verdict, editedText) {
+  if (!lastRunId) {
+    showToast("この提案にはフィードバックできません（IDなし）", "warn");
+    return;
+  }
+  try {
+    const res = await fetch(`${WORKER_URL}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        run_id: lastRunId,
+        verdict,
+        edited_text: editedText || "",
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+    const status = $("feedbackStatus");
+    if (status) {
+      let msg = "✅ フィードバックありがとうございます。AIの学習に反映しました。";
+      if (data.learned && data.learned_text) {
+        msg += `\n📚 新しく学んだこと：「${data.learned_text}」`;
+      }
+      status.textContent = msg;
+      status.style.display = "block";
+    }
+    showToast("フィードバックを記録しました", "success");
+    loadMetrics(true);
+  } catch (e) {
+    showToast("フィードバック送信に失敗：" + e.message, "error");
+  }
+}
+
+$("fbUpBtn")?.addEventListener("click", () => sendFeedback("up"));
+$("fbDownBtn")?.addEventListener("click", () => sendFeedback("down"));
+$("fbAdoptBtn")?.addEventListener("click", () => sendFeedback("adopted"));
+$("fbEditBtn")?.addEventListener("click", () => {
+  const box = $("feedbackEditArea");
+  if (box) {
+    const isHidden = box.style.display === "none" || !box.style.display;
+    box.style.display = isHidden ? "block" : "none";
+    if (isHidden) {
+      const ta = $("feedbackEditText");
+      if (ta && !ta.value) ta.value = getOutputPlainText();
+    }
+  }
+});
+$("fbEditSubmitBtn")?.addEventListener("click", () => {
+  const ta = $("feedbackEditText");
+  const edited = ta ? ta.value.trim() : "";
+  if (!edited) { showToast("修正内容を入力してください", "warn"); return; }
+  sendFeedback("edited", edited);
+});
+
+// =====================================================
+// Closed Loop: 学習状況メーター
+// =====================================================
+async function loadMetrics(silent) {
+  try {
+    const res = await fetch(`${WORKER_URL}/metrics`);
+    const data = await res.json();
+    const el = $("metricsBody");
+    if (!el) return;
+    const sat = (data.satisfaction_rate === null || data.satisfaction_rate === undefined)
+      ? "—" : `${data.satisfaction_rate}%`;
+    el.innerHTML =
+      `<div class="metric-item"><span class="metric-num">${data.total_runs || 0}</span><span class="metric-label">累計実行回数</span></div>` +
+      `<div class="metric-item"><span class="metric-num">${data.learned_knowledge_count || 0}</span><span class="metric-label">学習した営業ナレッジ</span></div>` +
+      `<div class="metric-item"><span class="metric-num">${sat}</span><span class="metric-label">提案の満足度</span></div>`;
+    const top = $("metricsTopLearned");
+    if (top) {
+      if (data.top_learned && data.top_learned.length > 0) {
+        top.innerHTML = "<div class=\"metrics-learned-title\">📚 最近AIが学んだコツ</div>" +
+          data.top_learned.map((x) => `<div class="metrics-learned-item">・${x.text}（採用${x.score}回）</div>`).join("");
+        top.style.display = "block";
+      } else {
+        top.style.display = "none";
+      }
+    }
+  } catch (e) {
+    if (!silent) showToast("学習状況の読み込みに失敗：" + e.message, "error");
+  }
+}
 
 // =====================================================
 // 結果コピー／ダウンロード
@@ -481,7 +606,13 @@ function renderTaskList() {
   }
   filtered.forEach((t) => {
     const li = document.createElement("li");
-    li.textContent = `[${t.date}] (${t.category}/${t.mode}) ${t.summary}`;
+    // フィードバック済みなら評価アイコンを表示（可視化）
+    let fbMark = "";
+    if (t.feedback && t.feedback.verdict) {
+      const map = { up: "👍", down: "👎", adopted: "✅採用", edited: "✏️修正" };
+      fbMark = " " + (map[t.feedback.verdict] || "");
+    }
+    li.textContent = `[${t.date}] (${t.category}/${t.mode}) ${t.summary}${fbMark}`;
     ul.appendChild(li);
   });
 }
@@ -524,4 +655,5 @@ $("clearBtn").addEventListener("click", clearTasks);
 renderTaskGrid();
 renderSteps(-1);
 renderPresetButtons();
-loadTasks(true); // 初回は自動で静かに読み込む
+loadTasks(true);   // 初回は自動で静かに読み込む
+loadMetrics(true); // Closed Loop: 学習状況も静かに読み込む
