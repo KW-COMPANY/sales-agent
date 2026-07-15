@@ -1,3 +1,4 @@
+<!-- Output: html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -9,7 +10,7 @@
 <body>
   <header class="app-header">
     <h1>🤝 SalesPilot</h1>
-    <p class="subtitle">営業職向け タスク＆スケジュール提案</p>
+    <p class="subtitle">営業職向け タスク＆スケジュール提案（学習するAIエージェント）</p>
   </header>
 
   <main class="container">
@@ -21,6 +22,17 @@
         <li>氏名・会社名・メール・電話番号・住所などの<strong>個人情報・企業情報は入力しないでください</strong></li>
         <li>検知された場合は<strong>自動マスキング</strong>され、AIにも保存先にも生データは渡りません</li>
       </ul>
+    </section>
+
+    <!-- 学習状況メーター（Closed Loop 可視化） -->
+    <section class="card metrics-card">
+      <h2>📈 AIの成長状況（使うほど賢くなります）</h2>
+      <div class="metrics-body" id="metricsBody">
+        <div class="metric-item"><span class="metric-num">–</span><span class="metric-label">累計実行回数</span></div>
+        <div class="metric-item"><span class="metric-num">–</span><span class="metric-label">学習した営業ナレッジ</span></div>
+        <div class="metric-item"><span class="metric-num">–</span><span class="metric-label">提案の満足度</span></div>
+      </div>
+      <div class="metrics-learned" id="metricsTopLearned" style="display:none"></div>
     </section>
 
     <!-- タスク選択UI -->
@@ -97,6 +109,7 @@
     <!-- 結果表示 -->
     <section class="card">
       <h2>📅 エージェントからの提案</h2>
+      <div id="modelBadge" class="model-badge" style="display:none"></div>
       <div id="output" class="output">ここに結果が表示されます。</div>
       <div class="output-actions" id="outputActions" style="display:none">
         <button id="copyBtn" class="ghost-btn">📋 結果をコピー</button>
@@ -104,6 +117,22 @@
       </div>
       <div class="retry-area" id="retryArea" style="display:none">
         <button id="retryBtn" class="ghost-btn">🔄 再試行する</button>
+      </div>
+
+      <!-- Closed Loop: フィードバック -->
+      <div class="feedback-area" id="feedbackArea" style="display:none">
+        <div class="feedback-title">この提案は役に立ちましたか？（AIの学習に使われます）</div>
+        <div class="feedback-buttons">
+          <button id="fbUpBtn"    class="fb-btn fb-up">👍 役立った</button>
+          <button id="fbDownBtn"  class="fb-btn fb-down">👎 いまいち</button>
+          <button id="fbAdoptBtn" class="fb-btn fb-adopt">✅ この案で実行する</button>
+          <button id="fbEditBtn"  class="fb-btn fb-edit">✏️ 修正して報告</button>
+        </div>
+        <div id="feedbackEditArea" style="display:none; margin-top:10px;">
+          <textarea id="feedbackEditText" rows="4" placeholder="実際に採用した修正版を貼り付けてください（個人情報は入力しないでください）"></textarea>
+          <button id="fbEditSubmitBtn" class="ghost-btn" style="margin-top:8px;">修正内容を送信</button>
+        </div>
+        <div id="feedbackStatus" class="feedback-status" style="display:none"></div>
       </div>
     </section>
 
