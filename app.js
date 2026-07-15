@@ -1,4 +1,3 @@
-// File: app.js
 const WORKER_URL = "https://sales-agent.gmo-k-watanabe.workers.dev";
 
 const $ = (id) => document.getElementById(id);
@@ -452,7 +451,7 @@ $("retryBtn")?.addEventListener("click", () => {
 });
 
 // =====================================================
-// Closed Loop: フィードバックUI
+// フィードバックUI
 // =====================================================
 function showFeedback() {
   const area = $("feedbackArea");
@@ -525,7 +524,7 @@ $("fbEditSubmitBtn")?.addEventListener("click", () => {
 });
 
 // =====================================================
-// Closed Loop: 学習状況メーター
+// 学習状況メーター
 // =====================================================
 async function loadMetrics(silent) {
   try {
@@ -656,4 +655,4 @@ renderTaskGrid();
 renderSteps(-1);
 renderPresetButtons();
 loadTasks(true);   // 初回は自動で静かに読み込む
-loadMetrics(true); // Closed Loop: 学習状況も静かに読み込む
+loadMetrics(true); // 学習状況も静かに読み込む
